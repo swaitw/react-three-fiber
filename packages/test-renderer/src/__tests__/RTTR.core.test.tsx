@@ -1,12 +1,13 @@
+import { useFrame } from '@react-three/fiber'
 import * as React from 'react'
 import * as THREE from 'three'
 
 import ReactThreeTestRenderer from '../index'
 
-type ExampleComp = THREE.Mesh<THREE.BoxBufferGeometry, THREE.Material>
+type ExampleComp = THREE.Mesh<THREE.BoxGeometry, THREE.Material>
 
 describe('ReactThreeTestRenderer Core', () => {
-  it('renders a simple component', async () => {
+  it('renders JSX', async () => {
     const Mesh = () => {
       return (
         <mesh>
@@ -15,12 +16,28 @@ describe('ReactThreeTestRenderer Core', () => {
         </mesh>
       )
     }
-    const renderer = await ReactThreeTestRenderer.create(
-      <React.Suspense fallback={null}>
-        <Mesh />
-      </React.Suspense>,
-    )
 
+    const renderer = await ReactThreeTestRenderer.create(<Mesh />)
+    expect(renderer.scene.children[0].type).toEqual('Mesh')
+    await renderer.update(<Mesh />)
+    expect(renderer.scene.children[0].type).toEqual('Mesh')
+  })
+
+  it('renders a simple component with hooks', async () => {
+    const Mesh = () => {
+      const meshRef = React.useRef<THREE.Mesh<THREE.BoxGeometry, THREE.MeshBasicMaterial>>(null)
+      useFrame(() => void (meshRef.current!.position.x += 0.01))
+      return (
+        <mesh>
+          <boxGeometry args={[2, 2]} />
+          <meshBasicMaterial />
+        </mesh>
+      )
+    }
+
+    const renderer = await ReactThreeTestRenderer.create(<Mesh />)
+    expect(renderer.scene.children[0].type).toEqual('Mesh')
+    await renderer.update(<Mesh />)
     expect(renderer.scene.children[0].type).toEqual('Mesh')
   })
 
@@ -29,7 +46,7 @@ describe('ReactThreeTestRenderer Core', () => {
       const [name, setName] = React.useState<string>()
 
       React.useLayoutEffect(() => {
-        ;(React as any).startTransition(() => void setName('mesh'))
+        React.startTransition(() => void setName('mesh'))
       })
 
       return (
@@ -82,19 +99,7 @@ describe('ReactThreeTestRenderer Core', () => {
 
     const renderer = await ReactThreeTestRenderer.create(<Parent />)
 
-    expect(renderer.toGraph()).toEqual([
-      {
-        type: 'Group',
-        name: '',
-        children: [
-          {
-            type: 'Mesh',
-            name: '',
-            children: [],
-          },
-        ],
-      },
-    ])
+    expect(renderer.toGraph()).toMatchSnapshot()
   })
 
   it('renders some basics with an update', async () => {
@@ -167,7 +172,7 @@ describe('ReactThreeTestRenderer Core', () => {
   })
 
   it('exposes the instance', async () => {
-    class Mesh extends React.PureComponent {
+    class Instance extends React.PureComponent {
       state = { standardMat: false }
 
       handleStandard() {
@@ -184,51 +189,17 @@ describe('ReactThreeTestRenderer Core', () => {
       }
     }
 
-    const renderer = await ReactThreeTestRenderer.create(<Mesh />)
+    const renderer = await ReactThreeTestRenderer.create(<Instance />)
 
-    expect(renderer.toTree()).toEqual([
-      {
-        type: 'mesh',
-        props: {
-          args: [],
-        },
-        children: [
-          { type: 'boxGeometry', props: { args: [2, 2] }, children: [] },
-          {
-            type: 'meshBasicMaterial',
-            props: {
-              args: [],
-            },
-            children: [],
-          },
-        ],
-      },
-    ])
+    expect(renderer.toTree()).toMatchSnapshot()
 
-    const instance = renderer.getInstance() as Mesh
+    const instance = renderer.getInstance() as Instance
 
     await ReactThreeTestRenderer.act(async () => {
       instance.handleStandard()
     })
 
-    expect(renderer.toTree()).toEqual([
-      {
-        type: 'mesh',
-        props: {
-          args: [],
-        },
-        children: [
-          { type: 'boxGeometry', props: { args: [2, 2] }, children: [] },
-          {
-            type: 'meshStandardMaterial',
-            props: {
-              args: [],
-            },
-            children: [],
-          },
-        ],
-      },
-    ])
+    expect(renderer.toTree()).toMatchSnapshot()
   })
 
   it('updates children', async () => {
@@ -278,7 +249,7 @@ describe('ReactThreeTestRenderer Core', () => {
         log.push('render ' + this.props.name)
         return (
           <mesh>
-            <boxBufferGeometry args={[2, 2]} />
+            <boxGeometry args={[2, 2]} />
             <meshStandardMaterial />
           </mesh>
         )
@@ -316,15 +287,7 @@ describe('ReactThreeTestRenderer Core', () => {
     )
     const renderer = await ReactThreeTestRenderer.create(<Component />)
 
-    expect(renderer.toTree()).toEqual([
-      {
-        type: 'group',
-        props: {
-          args: [],
-        },
-        children: [],
-      },
-    ])
+    expect(renderer.toTree()).toMatchSnapshot()
   })
 
   it('correctly builds a tree', async () => {
@@ -346,7 +309,7 @@ describe('ReactThreeTestRenderer Core', () => {
       return (
         <mesh>
           <bufferGeometry attach="geometry">
-            <bufferAttribute attach="attributes-position" array={vertices} count={vertices.length / 3} itemSize={3} />
+            <bufferAttribute attach="attributes-position" args={[vertices, 3]} />
           </bufferGeometry>
           <meshBasicMaterial attach="material" color="hotpink" />
         </mesh>
